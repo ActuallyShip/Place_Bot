@@ -3,7 +3,7 @@
 // @namespace    https://github.com/ActuallyShip/Bot
 // @version      20
 // @description  Guya Bot
-// @author       NoahvdAa
+// @author       Actuallyship
 // @match        https://www.reddit.com/r/place/*
 // @match        https://new.reddit.com/r/place/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=reddit.com
@@ -118,7 +118,7 @@ function connectSocket() {
         duration: DEFAULT_TOAST_DURATION_MS
     }).showToast();
 
-    socket = new WebSocket('wss://https://cnc.f-ck.me/api/ws');
+    socket = new WebSocket('wss://cnc.f-ck.me/api/ws');
 
     socket.onopen = function () {
         Toastify({
@@ -143,7 +143,7 @@ function connectSocket() {
                     text: `Loading new map (reason: ${data.reason ? data.reason : 'connecting to HQ'})...`,
                     duration: DEFAULT_TOAST_DURATION_MS
                 }).showToast();
-                currentOrderCtx = await getCanvasFromUrl(`https://https://cnc.f-ck.me/maps/${data.data}`, currentOrderCanvas, 0, 0, true);
+                currentOrderCtx = await getCanvasFromUrl(`https://cnc.f-ck.me/maps/${data.data}`, currentOrderCanvas, 0, 0, true);
                 order = getRealWork(currentOrderCtx.getImageData(0, 0, 2000, 2000).data);
                 Toastify({
                     text: `New map loaded, ${order.length} pixels in total`,
