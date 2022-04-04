@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Guya Bot
 // @namespace    https://github.com/ActuallyShip/Bot
-// @version      22
+// @version      23
 // @description  Guya Bot
 // @author       Actuallyship
 // @match        https://www.reddit.com/r/place/*
@@ -130,7 +130,7 @@ function connectSocket() {
       duration: DEFAULT_TOAST_DURATION_MS,
     }).showToast();
     socket.send(JSON.stringify({ type: "getmap" }));
-    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV22" }));
+    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV23" }));
   };
 
   socket.onmessage = async function (message) {
@@ -276,12 +276,13 @@ async function attemptPlace() {
 
   Toastify({
     text: `Trying to place pixel on ${x}, ${y}... (${percentComplete}% complete, ${workRemaining} remaining)`,
-    duration: DEFAULT_TOAST_DURATION_MS,
+    duration: DEFAULT_TOAST_DURATION_MS * 3,
   }).showToast();
 
-  const res = await place(x, y, COLOR_MAPPINGS[hex]);
-  const data = await res.json();
   try {
+    const res = await place(x, y, COLOR_MAPPINGS[hex]);
+    const data = await res.json();
+
     if (data.errors) {
       const error = data.errors[0];
       const nextPixel = error.extensions.nextAvailablePixelTs + 3000;
