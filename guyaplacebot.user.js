@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Guya Bot
 // @namespace    https://github.com/ActuallyShip/Bot
-// @version      21
+// @version      22
 // @description  Guya Bot
 // @author       Actuallyship
 // @match        https://www.reddit.com/r/place/*
 // @match        https://new.reddit.com/r/place/*
+// @connect      reddit.com
+// @connect      cnc.f-ck.me
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=reddit.com
 // @require	     https://cdn.jsdelivr.net/npm/toastify-js
 // @resource     TOASTIFY_CSS https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css
@@ -13,6 +15,7 @@
 // @downloadURL  https://github.com/ActuallyShip/Place_Bot/raw/main/guyaplacebot.user.js
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
+// @grant        GM.xmlHttpRequest
 // ==/UserScript==
 
 var socket;
@@ -105,7 +108,8 @@ let getPendingWork = (work, rgbaOrder, rgbaCanvas) => {
   attemptPlace();
 
   setInterval(() => {
-    if (socket) socket.send(JSON.stringify({ type: "ping" }));
+    if (socket && socket.readyState === WebSocket.OPEN)
+      socket.send(JSON.stringify({ type: "ping" }));
   }, 5000);
   setInterval(async () => {
     accessToken = await getAccessToken();
@@ -126,7 +130,7 @@ function connectSocket() {
       duration: DEFAULT_TOAST_DURATION_MS,
     }).showToast();
     socket.send(JSON.stringify({ type: "getmap" }));
-    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV21" }));
+    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV22" }));
   };
 
   socket.onmessage = async function (message) {
@@ -188,6 +192,27 @@ async function attemptPlace() {
     setTimeout(attemptPlace, 2000); // probeer opnieuw in 2sec.
     return;
   }
+
+  // Timer check should happen before work is calculated
+  const timer = await checkTimer();
+  const timeoutCheck = await timer.json();
+
+  const nextTimestamp =
+    timeoutCheck.data.act.data[0].data.nextAvailablePixelTimestamp;
+
+  if (nextTimestamp) {
+    const nextPixel = nextTimestamp + 3000;
+    const nextPixelDate = new Date(nextPixel);
+    const delay = nextPixelDate.getTime() - Date.now();
+    const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
+    Toastify({
+      text: `Your pixel isn't ready yet. Next pixel placed in ${nextPixelDate.toLocaleTimeString()}.`,
+      duration: toast_duration,
+    }).showToast();
+    setTimeout(attemptPlace, delay);
+    return;
+  }
+
   var ctx;
   try {
     ctx = await getCanvasFromUrl(
@@ -254,25 +279,6 @@ async function attemptPlace() {
     duration: DEFAULT_TOAST_DURATION_MS,
   }).showToast();
 
-  const timer = await checkTimer();
-  const timeoutCheck = await timer.json();
-
-  const nextTimestamp =
-    timeoutCheck.data.act.data[0].data.nextAvailablePixelTimestamp;
-
-  if (nextTimestamp) {
-    const nextPixel = nextTimestamp + 3000;
-    const nextPixelDate = new Date(nextPixel);
-    const delay = nextPixelDate.getTime() - Date.now();
-    const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
-    Toastify({
-      text: `Your pixel isn't ready yet. Next pixel placed in ${nextPixelDate.toLocaleTimeString()}.`,
-      duration: toast_duration,
-    }).showToast();
-    setTimeout(attemptPlace, delay);
-    return;
-  }
-
   const res = await place(x, y, COLOR_MAPPINGS[hex]);
   const data = await res.json();
   try {
@@ -289,7 +295,9 @@ async function attemptPlace() {
       setTimeout(attemptPlace, delay);
     } else {
       const nextPixel =
-        data.data.act.data[0].data.nextAvailablePixelTimestamp + 3000;
+        data.data.act.data[0].data.nextAvailablePixelTimestamp +
+        3000 +
+        Math.floor(Math.random() * 4000);
       const nextPixelDate = new Date(nextPixel);
       const delay = nextPixelDate.getTime() - Date.now();
       const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
@@ -303,7 +311,7 @@ async function attemptPlace() {
     console.warn("Error parsing response", e);
     Toastify({
       text: `Error parsing response: ${e}.`,
-      duration: DEFAULT_TOAST_DURATION_MS,
+      duration: DEFAULT_TOAST_DURATION_MS * 12,
     }).showToast();
     setTimeout(attemptPlace, 10000);
   }
@@ -459,24 +467,31 @@ function convertBase64(string) {
 function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
   return new Promise((resolve, reject) => {
     let loadImage = (ctx) => {
-      var img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        if (clearCanvas) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        ctx.drawImage(img, x, y);
-        resolve(ctx);
-      };
-      img.onerror = () => {
-        Toastify({
-          text: "Erorr retrieving map, trying again...",
-          duration: 3000,
-        }).showToast();
-        setTimeout(() => loadImage(ctx), 3000);
-      };
-      console.log(url);
-      img.src = "https://services.f-ck.me/v1/image/" + convertBase64(url);
+      GM.xmlHttpRequest({
+        method: "GET",
+        url: url,
+        responseType: "blob",
+        onload: function (response) {
+          var urlCreator = window.URL || window.webkitURL;
+          var imageUrl = urlCreator.createObjectURL(this.response);
+          var img = new Image();
+          img.onload = () => {
+            if (clearCanvas) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            ctx.drawImage(img, x, y);
+            resolve(ctx);
+          };
+          img.onerror = () => {
+            Toastify({
+              text: "Error retrieving map. Trying again in 3 sec...",
+              duration: 3000,
+            }).showToast();
+            setTimeout(() => loadImage(ctx), 3000);
+          };
+          img.src = imageUrl;
+        },
+      });
     };
     loadImage(canvas.getContext("2d"));
   });
