@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Guya Bot
 // @namespace    https://github.com/ActuallyShip/Bot
-// @version      25
+// @version      26
 // @description  Guya Bot
 // @author       Actuallyship
 // @match        https://www.reddit.com/r/place/*
@@ -129,7 +129,7 @@ function connectSocket() {
       duration: DEFAULT_TOAST_DURATION_MS,
     }).showToast();
     socket.send(JSON.stringify({ type: "getmap" }));
-    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV25" }));
+    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV26" }));
   };
 
   socket.onmessage = async function (message) {
@@ -193,22 +193,32 @@ async function attemptPlace() {
   }
 
   // Timer check should happen before work is calculated
-  const timer = await checkTimer();
-  const timeoutCheck = await timer.json();
+  try {
+    const timer = await checkTimer();
+    const timeoutCheck = await timer.json();
 
-  const nextTimestamp =
-    timeoutCheck.data.act.data[0].data.nextAvailablePixelTimestamp;
+    const nextTimestamp =
+      timeoutCheck.data.act.data[0].data.nextAvailablePixelTimestamp;
 
-  if (nextTimestamp && nextTimestamp > 0) {
-    const nextPixel = nextTimestamp + 3000;
-    const nextPixelDate = new Date(nextPixel);
-    const delay = nextPixelDate.getTime() - Date.now();
-    const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
+    if (nextTimestamp && nextTimestamp > 0) {
+      const nextPixel = nextTimestamp + 3000;
+      const nextPixelDate = new Date(nextPixel);
+      const delay = nextPixelDate.getTime() - Date.now();
+      const toast_duration = delay > 0 ? delay : DEFAULT_TOAST_DURATION_MS;
+      Toastify({
+        text: `Your pixel isn't ready yet. Next pixel placed in ${nextPixelDate.toLocaleTimeString()}.`,
+        duration: toast_duration,
+      }).showToast();
+      setTimeout(attemptPlace, delay);
+      return;
+    }
+  } catch (e) {
+    console.warn("Personal timer error", e);
     Toastify({
-      text: `Your pixel isn't ready yet. Next pixel placed in ${nextPixelDate.toLocaleTimeString()}.`,
-      duration: toast_duration,
+      text: "Error getting your personal timer, trying again in 20s...",
+      duration: DEFAULT_TOAST_DURATION_MS * 2,
     }).showToast();
-    setTimeout(attemptPlace, delay);
+    setTimeout(attemptPlace, 20000); // probeer opnieuw in 10sec.
     return;
   }
 
