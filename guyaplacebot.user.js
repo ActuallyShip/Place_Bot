@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Guya Bot
 // @namespace    https://github.com/ActuallyShip/Bot
-// @version      20
+// @version      21
 // @description  Guya Bot
 // @author       Actuallyship
 // @match        https://www.reddit.com/r/place/*
