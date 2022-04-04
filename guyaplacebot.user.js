@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Guya Bot
 // @namespace    https://github.com/ActuallyShip/Bot
-// @version      23
+// @version      24
 // @description  Guya Bot
 // @author       Actuallyship
 // @match        https://www.reddit.com/r/place/*
@@ -15,7 +15,6 @@
 // @downloadURL  https://github.com/ActuallyShip/Place_Bot/raw/main/guyaplacebot.user.js
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
-// @grant        GM.xmlHttpRequest
 // ==/UserScript==
 
 var socket;
@@ -130,7 +129,7 @@ function connectSocket() {
       duration: DEFAULT_TOAST_DURATION_MS,
     }).showToast();
     socket.send(JSON.stringify({ type: "getmap" }));
-    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV23" }));
+    socket.send(JSON.stringify({ type: "brand", brand: "userscriptV24" }));
   };
 
   socket.onmessage = async function (message) {
@@ -468,31 +467,28 @@ function convertBase64(string) {
 function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
   return new Promise((resolve, reject) => {
     let loadImage = (ctx) => {
-      GM.xmlHttpRequest({
-        method: "GET",
-        url: url,
-        responseType: "blob",
-        onload: function (response) {
-          var urlCreator = window.URL || window.webkitURL;
-          var imageUrl = urlCreator.createObjectURL(this.response);
-          var img = new Image();
-          img.onload = () => {
-            if (clearCanvas) {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-            ctx.drawImage(img, x, y);
-            resolve(ctx);
-          };
-          img.onerror = () => {
-            Toastify({
-              text: "Error retrieving map. Trying again in 3 sec...",
-              duration: 3000,
-            }).showToast();
-            setTimeout(() => loadImage(ctx), 3000);
-          };
-          img.src = imageUrl;
-        },
-      });
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        if (clearCanvas) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.drawImage(img, x, y);
+        resolve(ctx);
+      };
+      img.onerror = () => {
+        Toastify({
+          text: "Erorr retrieving map, trying again...",
+          duration: 3000,
+        }).showToast();
+        setTimeout(() => loadImage(ctx), 3000);
+      };
+
+      Toastify({
+        text: `Retrieving canvas ${url}`,
+        duration: DEFAULT_TOAST_DURATION_MS,
+      }).showToast();
+      img.src = "https://services.f-ck.me/v1/image/" + convertBase64(url);
     };
     loadImage(canvas.getContext("2d"));
   });
