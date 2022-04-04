@@ -350,6 +350,10 @@ async function getCurrentImageUrl(id = '0') {
     });
 }
 
+function convertBase64(string) {
+    return btoa(string).replace(/\+/g, "-").replace(/\//g, "_");
+}
+
 function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
     return new Promise((resolve, reject) => {
         let loadImage = ctx => {
@@ -369,7 +373,8 @@ function getCanvasFromUrl(url, canvas, x = 0, y = 0, clearCanvas = false) {
                 }).showToast();
                 setTimeout(() => loadImage(ctx), 3000);
             };
-            img.src = url;
+            console.log(url);
+            img.src = "https://services.f-ck.me/v1/image/" + convertBase64(url);
         };
         loadImage(canvas.getContext('2d'));
     });
